@@ -5,15 +5,25 @@ node_js: node
 
 cache:
   directories:
-    - tests/elm-stuff/build-artifacts
+    - elm-stuff/build-artifacts
+    - elm-stuff/packages
     - sysconfcpus
-
 os:
   - linux
 
+env: ELM_VERSION=0.18.0
+
 before_install:
   - echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
-  - | # epic build time improvement - see https://github.com/elm-lang/elm-compiler/issues/1473#issuecomment-245704142
+
+install:
+  - node --version
+  - npm --version
+  - npm install -g elm@$ELM_VERSION elm-test
+  - git clone https://github.com/NoRedInk/elm-ops-tooling
+  - elm-ops-tooling/with_retry.rb elm package install --yes
+  # Faster compile on Travis.
+  - |
     if [ ! -d sysconfcpus/bin ];
     then
       git clone https://github.com/obmarg/libsysconfcpus.git;
@@ -23,19 +33,8 @@ before_install:
       cd ..;
     fi
 
-install:
-  - node --version
-  - npm --version
-  - npm install -g elm@0.18.0 elm-test@0.18.8
-  - mv $(npm config get prefix)/bin/elm-make $(npm config get prefix)/bin/elm-make-old
-  - printf '%s\n\n' '#!/bin/bash' 'echo "Running elm-make with sysconfcpus -n 2"' '$TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm-make-old "$@"' > $(npm config get prefix)/bin/elm-make
-  - chmod +x $(npm config get prefix)/bin/elm-make
-  - travis_retry elm-package install --yes
-  - cd tests
-  - npm install
-  - travis_retry elm-package install --yes
-  - cd ..
+before_script:
+  - cd tests && $TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm-make --yes Tests.elm && cd ..
 
 script:
-  - cat /home/travis/build/dividat/elm-semver/tests/Main.elm
   - $TRAVIS_BUILD_DIR/sysconfcpus/bin/sysconfcpus -n 2 elm-test
