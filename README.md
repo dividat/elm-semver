@@ -1,4 +1,4 @@
-# elm-semver
+# elm-semver [![Build Status](https://travis-ci.org/dividat/elm-semver.svg?branch=master)](https://travis-ci.org/dividat/elm-semver)
 
 Library for handling semantic version numbers ([Semver 2.0.0](http://semver.org/spec/v2.0.0.html)) in Elm.
 
