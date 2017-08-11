@@ -23,6 +23,7 @@ Contributions are welcome in the form of issues or pull requests. Please remembe
 1. Explain the intended purpose of your change and provide enough context for others to follow your reasoning.
 2. Add documentation for new (or existing!) functionality.
 3. Include tests to help ensure correctness of added code.
+4. Format the code with [elm-format](https://github.com/avh4/elm-format).
 
 ## Copyright and Licensing
 
