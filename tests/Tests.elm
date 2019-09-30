@@ -69,6 +69,32 @@ all =
                         ({ version | prerelease = illegalSeries } |> Semver.print |> Semver.parse)
                         Nothing
             ]
+        , describe "hardcoded"
+            [ test "accepts known valid strings" <|
+                \() ->
+                    Expect.all
+                        (List.map
+                            (\str () ->
+                                Expect.true
+                                    ("Could not parse " ++ str)
+                                    (Nothing /= Semver.parse str)
+                            )
+                            valid
+                        )
+                        ()
+            , test "rejects known invalid strings" <|
+                \() ->
+                    Expect.all
+                        (List.map
+                            (\str () ->
+                                Expect.true
+                                    ("Should not have parsed " ++ str)
+                                    (Nothing == Semver.parse str)
+                            )
+                            invalid
+                        )
+                        ()
+            ]
         , describe "comparison"
             [ test "compares standard cases as expected" <|
                 \() ->
@@ -114,6 +140,107 @@ all =
         ]
 
 
+valid : List String
+valid =
+    [ "1.9.0"
+    , "1.10.0"
+    , "1.11.0"
+    , "1.0.0-alpha"
+    , "1.0.0-alpha.1"
+    , "1.0.0-0.3.7"
+    , "1.0.0-x.7.z.92"
+    , "1.0.0-alpha+001"
+    , "1.0.0+20130313144700"
+    , "1.352.440-111a+exp.sha.5114185"
+    , "1.352.440-beta+exp.sha.5114f85"
+    , "0.0.4"
+    , "1.2.3"
+    , "10.20.30"
+    , "1.1.2-prerelease+meta"
+    , "1.1.2+meta"
+    , "1.1.2+meta-valid"
+    , "1.0.0-alpha"
+    , "1.0.0-beta"
+    , "1.0.0-alpha.beta"
+    , "1.0.0-alpha.beta.1"
+    , "1.0.0-alpha.1"
+    , "1.0.0-alpha0.valid"
+    , "1.0.0-alpha.0valid"
+    , "1.0.0-alpha-a.b-c-somethinglong+build.1-aef.1-its-okay"
+    , "1.0.0-rc.1+build.1"
+    , "2.0.0-rc.1+build.123"
+    , "1.2.3-beta"
+    , "10.2.3-DEV-SNAPSHOT"
+    , "1.2.3-SNAPSHOT-123"
+    , "1.0.0"
+    , "2.0.0"
+    , "1.1.7"
+    , "2.0.0+build.1848"
+    , "2.0.1-alpha.1227"
+    , "1.0.0-alpha+beta"
+    , "1.2.3----RC-SNAPSHOT.12.9.1--.12+788"
+    , "1.2.3----R-S.12.9.1--.12+meta"
+    , "1.2.3----RC-SNAPSHOT.12.9.1--.12"
+    , "1.0.0+0.build.1-rc.10000aaa-kk-0.1"
+    , "1.0.0-0A.is.legal"
+    ]
+
+
+invalid : List String
+invalid =
+    [ "1.9"
+    , "1.01.0"
+    , ".11.0"
+    , "1.0.0alpha"
+    , "1.0.0-alpha._1"
+    , "1.0.0-0.03.7"
+    , "01.0.0-x.7.z.92"
+    , "1.0.0-alpha+**"
+    , "1.0.0+"
+    , "1.352.440-++exp.sha.5114f85"
+    , "1"
+    , "1.2"
+    , "1.2.3-0123"
+    , "1.2.3-0123.0123"
+    , "1.1.2+.123"
+    , "+invalid"
+    , "-invalid"
+    , "-invalid+invalid"
+    , "-invalid.01"
+    , "alpha"
+    , "alpha.beta"
+    , "alpha.beta.1"
+    , "alpha.1"
+    , "alpha+beta"
+    , "alpha_beta"
+    , "alpha."
+    , "alpha.."
+    , "beta"
+    , "1.0.0-alpha_beta"
+    , "-alpha."
+    , "1.0.0-alpha.."
+    , "1.0.0-alpha..1"
+    , "1.0.0-alpha...1"
+    , "1.0.0-alpha....1"
+    , "1.0.0-alpha.....1"
+    , "1.0.0-alpha......1"
+    , "1.0.0-alpha.......1"
+    , "01.1.1"
+    , "1.01.1"
+    , "1.1.01"
+    , "1.2"
+    , "1.2.3.DEV"
+    , "1.2-SNAPSHOT"
+    , "1.2.31.2.3----RC-SNAPSHOT.12.09.1--..12+788"
+    , "1.2-RC-SNAPSHOT"
+    , "-1.0.3-gamma+b7718"
+    , "+justmeta"
+    , "9.8.7+meta+meta"
+    , "9.8.7-whatever+meta+meta"
+    , "99999999999999999999999.999999999999999999.99999999999999999----RC-SNAPSHOT.12.09.1--------------------------------..12"
+    ]
+
+
 nat : Fuzzer Int
 nat =
     intRange 0 100
@@ -124,10 +251,21 @@ nat =
 identifier : Fuzzer String
 identifier =
     Fuzz.map2
-        (::)
+        (++)
         (identifierChar |> Fuzz.map String.fromChar)
-        (identifierChar |> Fuzz.map String.fromChar |> Fuzz.list)
-        |> Fuzz.map (String.join "")
+        (identifierChar |> Fuzz.map String.fromChar |> Fuzz.list |> Fuzz.map (String.join ""))
+
+
+{-| Fuzzer for non-empty identifiers with at least one non-digit.
+-}
+alnumIdentifier : Fuzzer String
+alnumIdentifier =
+    Fuzz.map2
+        (\prefix suffix ->
+            prefix ++ "m" ++ suffix
+        )
+        (identifierChar |> Fuzz.map String.fromChar |> Fuzz.list |> Fuzz.map (String.join ""))
+        (identifierChar |> Fuzz.map String.fromChar |> Fuzz.list |> Fuzz.map (String.join ""))
 
 
 {-| Fuzzer for legal versions.
@@ -138,7 +276,7 @@ version =
         |> Fuzz.andMap nat
         |> Fuzz.andMap nat
         |> Fuzz.andMap nat
-        |> Fuzz.andMap (list identifier)
+        |> Fuzz.andMap (list (Fuzz.oneOf [ nat |> Fuzz.map toString, alnumIdentifier ]))
         |> Fuzz.andMap (list identifier)
 
 

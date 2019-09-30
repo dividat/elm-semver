@@ -63,8 +63,8 @@ isValid version =
                     False
     in
         List.all (\n -> n >= 0) [ version.major, version.minor, version.patch ]
-            && List.all (isParseableAs identifier) version.prerelease
-            && List.all (isParseableAs identifier) version.build
+            && List.all (isParseableAs preReleaseIdentifier) version.prerelease
+            && List.all (isParseableAs buildMetadataIdentifier) version.build
 
 
 
@@ -213,8 +213,14 @@ parser =
         |= nat
         |. Parser.symbol "."
         |= nat
-        |= Parser.oneOf [ preReleaseVersion, Parser.succeed [] ]
-        |= Parser.oneOf [ buildMetadata, Parser.succeed [] ]
+        |= Parser.oneOf
+            [ identifierSeries preReleaseIdentifier (Parser.symbol "-")
+            , Parser.succeed []
+            ]
+        |= Parser.oneOf
+            [ identifierSeries buildMetadataIdentifier (Parser.symbol "+")
+            , Parser.succeed []
+            ]
         |. Parser.end
 
 
@@ -222,54 +228,108 @@ parser =
 -}
 nat : Parser Int
 nat =
-    let
-        isBetween low high char =
-            let
-                code =
-                    Char.toCode char
-            in
-                (code >= Char.toCode low) && (code <= Char.toCode high)
-    in
-        Parser.succeed identity
-            |= Parser.oneOf
-                [ Parser.keep (Parser.Exactly 1) ((==) '0')
-                , Parser.succeed (++)
-                    |= Parser.keep (Parser.Exactly 1) (isBetween '1' '9')
-                    |= Parser.keep zeroOrMore Char.isDigit
-                ]
-            |> Parser.andThen
-                (\natStr ->
-                    case String.toInt natStr of
-                        Ok nat ->
-                            Parser.succeed nat
+    Parser.succeed identity
+        |= numericIdentifier
+        |> Parser.andThen
+            (\natStr ->
+                case String.toInt natStr of
+                    Ok nat ->
+                        Parser.succeed nat
 
-                        Err err ->
-                            Parser.fail err
-                )
+                    Err err ->
+                        Parser.fail err
+            )
 
 
-{-| An alphanumeric identifier, [a-zA-Z0-9-]+.
--}
-identifier : Parser String
-identifier =
-    Parser.keep oneOrMore (\c -> c == '-' || Char.isLower c || Char.isUpper c || Char.isDigit c)
+preReleaseIdentifier : Parser String
+preReleaseIdentifier =
+    Parser.oneOf [ alphanumericIdentifier, numericIdentifier ]
 
 
-preReleaseVersion : Parser (List String)
-preReleaseVersion =
-    identifierSeries (Parser.symbol "-")
+buildMetadataIdentifier : Parser String
+buildMetadataIdentifier =
+    Parser.oneOf [ alphanumericIdentifier, digits ]
 
 
-buildMetadata : Parser (List String)
-buildMetadata =
-    identifierSeries (Parser.symbol "+")
-
-
-identifierSeries : Parser a -> Parser (List String)
-identifierSeries seperator =
+identifierSeries : Parser i -> Parser a -> Parser (List i)
+identifierSeries identifier seperator =
     Parser.succeed (::)
         |. seperator
         |= identifier
         |= Parser.repeat
             zeroOrMore
             (Parser.succeed identity |. Parser.symbol "." |= identifier)
+
+
+{-| An alphanumeric identifier, [a-zA-Z0-9-]+, containing at least one non-digit.
+-}
+alphanumericIdentifier : Parser String
+alphanumericIdentifier =
+    let
+        startsWithNonDigit =
+            Parser.succeed (++)
+                |= Parser.keep (Parser.Exactly 1) isNonDigit
+                |= Parser.keep zeroOrMore isIdentifierCharacter
+    in
+        Parser.oneOf
+            [ startsWithNonDigit
+
+            -- Delay commit until after something other than a digit has been seen,
+            -- this makes the parser usable as a oneOf option.
+            , Parser.delayedCommitMap
+                (++)
+                (Parser.keep oneOrMore isDigit)
+                startsWithNonDigit
+            ]
+
+
+{-| Either zero or a positive number without leading zero.
+-}
+numericIdentifier : Parser String
+numericIdentifier =
+    Parser.oneOf
+        [ Parser.succeed (++)
+            |= Parser.keep (Parser.Exactly 1) isPositiveDigit
+            |= Parser.keep zeroOrMore isDigit
+        , Parser.keep (Parser.Exactly 1) ((==) '0')
+        ]
+
+
+{-| A string of digits.
+-}
+digits : Parser String
+digits =
+    Parser.keep oneOrMore isDigit
+
+
+
+-- Character predicates
+
+
+isDigit : Char -> Bool
+isDigit =
+    isBetween '0' '9'
+
+
+isPositiveDigit : Char -> Bool
+isPositiveDigit =
+    isBetween '1' '9'
+
+
+isNonDigit : Char -> Bool
+isNonDigit c =
+    c == '-' || isBetween 'a' 'z' c || isBetween 'A' 'Z' c
+
+
+isIdentifierCharacter : Char -> Bool
+isIdentifierCharacter c =
+    isDigit c || isNonDigit c
+
+
+isBetween : Char -> Char -> Char -> Bool
+isBetween low high char =
+    let
+        code =
+            Char.toCode char
+    in
+        (code >= Char.toCode low) && (code <= Char.toCode high)
