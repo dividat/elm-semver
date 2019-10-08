@@ -1,29 +1,23 @@
 module Tests exposing (all)
 
 import Char
+import Expect
+import Fuzz exposing (..)
+import Semver
 import Set exposing (Set)
 import Test exposing (..)
-import Expect
-import Random.Pcg
-import Fuzz exposing (..)
-import Shrink
-
-
---
-
-import Semver
 
 
 all : Test
 all =
     describe "Semver"
         [ describe "checking"
-            [ fuzz version "accepts valid versions" <|
+            [ fuzz versionFuzzer "accepts valid versions" <|
                 \version ->
                     Expect.true
                         "Expected correctly constructed version to be valid"
                         (version |> Semver.isValid)
-            , fuzz2 version illegalIdentifierSeries "rejects invalid identifiers" <|
+            , fuzz2 versionFuzzer illegalIdentifierSeries "rejects invalid identifiers" <|
                 \version illegalSeries ->
                     Expect.all
                         [ \idents ->
@@ -53,21 +47,30 @@ all =
                         |> Expect.false "Expected invalid"
             ]
         , describe "parsing"
-            [ fuzz version "parse inverts print" <|
+            [ fuzz versionFuzzer "parse inverts print" <|
                 \version ->
                     Expect.equal
                         (version |> Semver.print |> Semver.parse)
                         (Just version)
-            , fuzz2 version illegalIdentifierSeries "parse rejects illegal prerelease identifiers" <|
+            , fuzz2 versionFuzzer illegalIdentifierSeries "parse rejects illegal prerelease identifiers" <|
                 \version illegalSeries ->
                     Expect.equal
                         ({ version | prerelease = illegalSeries } |> Semver.print |> Semver.parse)
                         Nothing
-            , fuzz2 version illegalIdentifierSeries "parse rejects illegal build identifiers" <|
+            , fuzz2 versionFuzzer illegalIdentifierSeries "parse rejects illegal build identifiers" <|
                 \version illegalSeries ->
                     Expect.equal
                         ({ version | prerelease = illegalSeries } |> Semver.print |> Semver.parse)
                         Nothing
+            , test "print inverts parse of big guy" <|
+                \() ->
+                    let
+                        bigGuy =
+                            "1.0.0-alpha-a.b-c-somethinglong+build.1-aef.1-its-okay"
+                    in
+                    Expect.equal
+                        (Semver.parse bigGuy |> Maybe.map Semver.print)
+                        (Just bigGuy)
             ]
         , describe "hardcoded"
             [ test "accepts known valid strings" <|
@@ -131,7 +134,7 @@ all =
                                 ]
                                 ( Semver.parse versionA, Semver.parse versionB )
                         )
-            , fuzz2 version version "EQ only if equal" <|
+            , fuzz2 versionFuzzer versionFuzzer "EQ only if equal" <|
                 \versionA versionB ->
                     Expect.true
                         "expected versions to be equal if compared EQ"
@@ -271,13 +274,13 @@ alnumIdentifier =
 
 {-| Fuzzer for legal versions.
 -}
-version : Fuzzer Semver.Version
-version =
+versionFuzzer : Fuzzer Semver.Version
+versionFuzzer =
     Fuzz.constant Semver.version
         |> Fuzz.andMap nat
         |> Fuzz.andMap nat
         |> Fuzz.andMap nat
-        |> Fuzz.andMap (list (Fuzz.oneOf [ nat |> Fuzz.map toString, alnumIdentifier ]))
+        |> Fuzz.andMap (list (Fuzz.oneOf [ nat |> Fuzz.map String.fromInt, alnumIdentifier ]))
         |> Fuzz.andMap (list identifier)
 
 
@@ -287,13 +290,13 @@ illegalIdentifierSeries : Fuzzer (List String)
 illegalIdentifierSeries =
     let
         legalOrEmpty =
-            (identifierChar |> Fuzz.map String.fromChar |> Fuzz.list)
+            identifierChar |> Fuzz.map String.fromChar |> Fuzz.list
 
         isIllegal code =
             not <|
                 (Set.member code identifierCharCodes || code == Char.toCode '.' || code == Char.toCode '+')
 
-        illegalChar =
+        illegalCharFuzzer =
             List.range 10 127
                 |> List.filter isIllegal
                 |> List.map Char.fromCode
@@ -304,15 +307,15 @@ illegalIdentifierSeries =
             Fuzz.map3
                 (\legalPre illegalChar legalPost -> legalPre ++ illegalChar :: legalPost)
                 legalOrEmpty
-                illegalChar
+                illegalCharFuzzer
                 legalOrEmpty
                 |> Fuzz.map (String.join "")
     in
-        Fuzz.map3
-            (\pre illegal post -> pre ++ illegal :: post)
-            (list identifier)
-            illegalIdentifier
-            (list identifier)
+    Fuzz.map3
+        (\pre illegal post -> pre ++ illegal :: post)
+        (list identifier)
+        illegalIdentifier
+        (list identifier)
 
 
 {-| Codes of valid identifier characters.
@@ -338,7 +341,4 @@ identifierChar =
 
 fuzzSample : a -> List a -> Fuzzer a
 fuzzSample fallback samples =
-    samples
-        |> Random.Pcg.sample
-        |> Random.Pcg.map (Maybe.withDefault fallback)
-        |> (\gen -> Fuzz.custom gen Shrink.noShrink)
+    Fuzz.oneOf (List.map Fuzz.constant samples)
