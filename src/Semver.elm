@@ -24,7 +24,7 @@ For the definition of semantic versioning with Semver 2.0.0, see
 
 # Handling Version Strings
 
-@docs print, parse, decode, encode
+@docs print, parse
 
 -}
 
