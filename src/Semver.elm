@@ -1,7 +1,7 @@
 module Semver exposing
     ( Version, version, isValid
     , compare, lessThan, greaterThan
-    , print, parse, decode, encode
+    , print, parse
     )
 
 {-| Provides basic functionality for handling semantic version numbers. Follows
@@ -29,8 +29,6 @@ For the definition of semantic versioning with Semver 2.0.0, see
 -}
 
 import Char
-import Json.Decode as JD exposing (Decoder)
-import Json.Encode as JE
 import Parser exposing ((|.), (|=), Parser)
 
 
@@ -191,25 +189,6 @@ parse : String -> Maybe Version
 parse versionString =
     Parser.run parser versionString
         |> Result.toMaybe
-
-
-{-| Decode a version from a JSON value.
--}
-decode : Decoder Version
-decode =
-    let
-        maybeToDecoder =
-            Maybe.map JD.succeed
-                >> Maybe.withDefault (JD.fail "Invalid version string.")
-    in
-    JD.string |> JD.andThen (parse >> maybeToDecoder)
-
-
-{-| Encode a version as JSON.
--}
-encode : Version -> JE.Value
-encode =
-    print >> JE.string
 
 
 parser : Parser Version
