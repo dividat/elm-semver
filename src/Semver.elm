@@ -154,7 +154,7 @@ greaterThan versionA versionB =
 
 The output format is such that
 
-    v |> print |> parse == v
+    v |> print |> parse == Just v
 
 -}
 print : Version -> String
