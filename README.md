@@ -1,4 +1,4 @@
-# elm-semver [![Build Status](https://travis-ci.org/dividat/elm-semver.svg?branch=master)](https://travis-ci.org/dividat/elm-semver)
+# elm-semver [![Unit tests](https://github.com/dividat/elm-semver/actions/workflows/main.yml/badge.svg)](https://github.com/dividat/elm-semver/actions/workflows/main.yml)
 
 Library for handling semantic version numbers ([Semver 2.0.0](http://semver.org/spec/v2.0.0.html)) in Elm.
 
@@ -27,6 +27,6 @@ Contributions are welcome in the form of issues or pull requests. Please remembe
 
 ## Copyright and Licensing
 
-(C) 2019 Dividat AG.
+(C) 2021 Dividat AG
 
 Published under MIT license.
