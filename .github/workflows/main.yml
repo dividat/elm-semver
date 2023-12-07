@@ -14,13 +14,12 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      # Checks-out the repository under $GITHUB_WORKSPACE, so your job can access it
       - uses: actions/checkout@v2
 
       - name: Use Node.js
         uses: actions/setup-node@v1
         with:
-          node-version: '12.x'
+          node-version: '16.x'
 
       - name: Install elm
         run: |
@@ -28,9 +27,14 @@ jobs:
           gunzip elm.gz
           chmod +x elm
           sudo mv elm /usr/local/bin/
+
+      - name: Install test runners
+        run: |
+          npm i elm-test -g
+          npm i elm-verify-examples -g
           
       - name: Run elm-test
-        run: npx elm-test
+        run: elm-test
 
       - name: Run elm-verify-examples
-        run: npx -p elm-test -p elm-verify-examples -c 'elm-verify-examples --run-tests'
+        run: elm-verify-examples --run-tests
