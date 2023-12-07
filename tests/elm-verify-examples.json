@@ -1,4 +1,4 @@
 {
   "root": "../src",
-  "tests": ["Semver"]
+  "tests": "exposed"
 }
