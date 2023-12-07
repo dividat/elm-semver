@@ -14,37 +14,35 @@ all =
         [ describe "checking"
             [ fuzz versionFuzzer "accepts valid versions" <|
                 \version ->
-                    Expect.true
-                        "Expected correctly constructed version to be valid"
-                        (version |> Semver.isValid)
+                    Expect.equal True (version |> Semver.isValid)
             , fuzz2 versionFuzzer illegalIdentifierSeries "rejects invalid identifiers" <|
                 \version illegalSeries ->
                     Expect.all
                         [ \idents ->
                             { version | prerelease = idents }
                                 |> Semver.isValid
-                                |> Expect.false "Expected illegal prerelease identifier to be invalid"
+                                |> Expect.equal False
                         , \idents ->
                             { version | build = idents }
                                 |> Semver.isValid
-                                |> Expect.false "Expected illegal build identifier to be invalid"
+                                |> Expect.equal False
                         ]
                         illegalSeries
             , test "rejects negative major version" <|
                 \() ->
                     Semver.version -1 0 3 [] []
                         |> Semver.isValid
-                        |> Expect.false "Expected invalid"
+                        |> Expect.equal False
             , test "rejects negative minor version" <|
                 \() ->
                     Semver.version 0 -2 3 [] []
                         |> Semver.isValid
-                        |> Expect.false "Expected invalid"
+                        |> Expect.equal False
             , test "rejects negative patch version" <|
                 \() ->
                     Semver.version 0 3 -3 [] []
                         |> Semver.isValid
-                        |> Expect.false "Expected invalid"
+                        |> Expect.equal False
             ]
         , describe "parsing"
             [ fuzz versionFuzzer "parse inverts print" <|
@@ -77,11 +75,7 @@ all =
                 \() ->
                     Expect.all
                         (List.map
-                            (\str () ->
-                                Expect.true
-                                    ("Could not parse " ++ str)
-                                    (Nothing /= Semver.parse str)
-                            )
+                            (\str () -> Expect.notEqual Nothing (Semver.parse str))
                             valid
                         )
                         ()
@@ -89,11 +83,7 @@ all =
                 \() ->
                     Expect.all
                         (List.map
-                            (\str () ->
-                                Expect.true
-                                    ("Should not have parsed " ++ str)
-                                    (Nothing == Semver.parse str)
-                            )
+                            (\str () -> Expect.equal Nothing (Semver.parse str))
                             invalid
                         )
                         ()
@@ -136,9 +126,10 @@ all =
                         )
             , fuzz2 versionFuzzer versionFuzzer "EQ only if equal" <|
                 \versionA versionB ->
-                    Expect.true
-                        "expected versions to be equal if compared EQ"
-                        (Semver.compare versionA versionB /= EQ || versionA == versionB)
+                    if versionA == versionB then
+                        Expect.equal EQ (Semver.compare versionA versionB)
+                    else
+                        Expect.notEqual EQ (Semver.compare versionA versionB)
             ]
         ]
 
