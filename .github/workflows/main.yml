@@ -31,3 +31,6 @@ jobs:
           
       - name: Run elm-test
         run: npx elm-test
+
+      - name: Run elm-verify-examples
+        run: npx -p elm-test -p elm-verify-examples -c 'elm-verify-examples --run-tests'
