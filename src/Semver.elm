@@ -133,6 +133,10 @@ compare versionA versionB =
 
 
 {-| Shorthand for determining whether `versionA` precedes `versionB`.
+
+    lessThan (version 1 0 0 [] []) (version 2 0 0 [] [])
+    --> True
+
 -}
 lessThan : Version -> Version -> Bool
 lessThan versionA versionB =
@@ -140,6 +144,10 @@ lessThan versionA versionB =
 
 
 {-| Shorthand for determining whether `versionA` is preceded by `versionB`.
+
+    greaterThan (version 2 0 0 [] []) (version 1 0 0 [] [])
+    --> True
+
 -}
 greaterThan : Version -> Version -> Bool
 greaterThan versionA versionB =
@@ -152,9 +160,14 @@ greaterThan versionA versionB =
 
 {-| Produce a version's string representation.
 
+    v : Version
+    v = version 3 2 1 [ "foo", "qux" ] [ "bar" ]
+
+    print v --> "3.2.1-foo.qux+bar"
+
 The output format is such that
 
-    v |> print |> parse == Just v
+    parse (print v) --> Just v
 
 -}
 print : Version -> String
@@ -183,6 +196,9 @@ print version_ =
 Parsing fails if the string is not legal according to Semver 2.0.0.
 
 Does not accept loose syntax or prefixes ('v') to the version string.
+
+    parse "3.2.1-foo.qux+bar"
+    --> Just (version 3 2 1 [ "foo", "qux" ] [ "bar" ])
 
 -}
 parse : String -> Maybe Version
